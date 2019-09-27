@@ -18,19 +18,27 @@ import logging
 import time
 import argparse
 import json
+import boto3
 
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 from datetime import datetime
 
 import tempprobe
 
+queueUrl = 'https://sqs.us-west-2.amazonaws.com/290911238368/temp_response.fifo'
+sqs = boto3.resource('sqs')
+queue = sqs.Queue(queueUrl)
+
+
 # Custom MQTT message callback
 def customCallback(client, userdata, message):
-    print("Received a new message: ")
-    print(message.payload)
-    print("from topic: ")
-    print(message.topic)
-    print("--------------\n\n")
+    temp = round(tempprobe.get(), 1)
+    t = time.time()
+    queue.send_message( MessageBody=str(temp), 
+                        MessageGroupId='temp', 
+                        MessageDeduplicationId=str(t)
+    )
+    print('sent temp {:f} to queue'.format(temp))
 
 
 # Read in command-line parameters
@@ -96,9 +104,10 @@ myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
 myAWSIoTMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
 myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
 
-# Connecte to AWS IoT
+# Connecte to AWS IoT and subscribe to topic
 myAWSIoTMQTTClient.connect()
-time.sleep(1)
+myAWSIoTMQTTClient.subscribe('bismarck/request_temp', 1, customCallback)
+time.sleep(2)
 
 # Publish to topic if temperature exceeds threshold, then backoff next publish for defined period of time
 loop_count = 0
