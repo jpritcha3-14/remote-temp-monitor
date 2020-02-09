@@ -13,20 +13,21 @@ print("The server is ready to recieve requests on port {}".format(serverPort))
 while True:
     connectionSocket, addr = serverSocket.accept()
     message = connectionSocket.recv(2048)
-    parsed = list(map(lambda x: x.decode(), message.split(b'\r\n')))
+    parsed = [x.decode() for x in message.split(b'\r\n')]
     request = parsed[0].split(' ')
     print('request: ', ' '.join(request))
     
-    if request[1] == '/':
-        successMsg = ('HTTP/1.1 200 OK')
-        t = datetime.datetime.now()
-        response = "Temperature at {:02d}:{:02d}:{:02d} - {:.2f} F".format(t.hour, t.minute, t.second, tempprobe.get())
-        print('response: ', successMsg)
-        connectionSocket.send((successMsg + '\n\n' + response + '\n').encode())
-    else:
-        errorMsg = ('HTTP/1.1 404 NOT_FOUND')
-        print('response: ', errorMsg)
-        specificErr = ('File Not Found'.format(request[1][1:]))
-        connectionSocket.send((errorMsg + '\n\n' + specificErr + '\n').encode())
+    if len(request) == 3:
+        if request[1] == '/':
+            successMsg = ('HTTP/1.1 200 OK')
+            t = datetime.datetime.now()
+            response = "Temperature at {:02d}:{:02d}:{:02d} - {:.2f} F".format(t.hour, t.minute, t.second, tempprobe.get())
+            print('response: ', successMsg)
+            connectionSocket.send((successMsg + '\n\n' + response + '\n').encode())
+        else:
+            errorMsg = ('HTTP/1.1 404 NOT_FOUND')
+            print('response: ', errorMsg)
+            specificErr = ('File Not Found'.format(request[1][1:]))
+            connectionSocket.send((errorMsg + '\n\n' + specificErr + '\n').encode())
     
     connectionSocket.close()
